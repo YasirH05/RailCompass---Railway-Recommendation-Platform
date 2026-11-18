@@ -1,13 +1,12 @@
+import 'dotenv/config'; // load .env before any module reads process.env
 import express from 'express';
-import dotenv from 'dotenv';
 import cors from 'cors';
-import mongoose from 'mongoose';
+import { ensureDb } from './utils/db.js';
 import trainRoutes from './routes/trainRoutes.js';
 import stationRoutes from './routes/stationRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import { initData } from './utils/dataLoader.js';
 
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,17 +24,11 @@ app.use('/api/trains', trainRoutes);
 app.use('/api/stations', stationRoutes);
 app.use('/api/auth', authRoutes);
 
-// Database connection
-const rawUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/railwise';
-const MONGODB_URI = rawUri.replace(/\s+/g, ''); // Strip all whitespace and line breaks
-
-mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
-  .then(() => {
-    console.log('Connected to MongoDB');
-  })
-  .catch((err) => {
-    console.error('⚠️ Failed to connect to MongoDB. Running in memory fallback mode:', err.message);
-  });
+// Database connection (same helper the auth routes use, so they share one attempt)
+ensureDb().then((ok) => {
+  if (ok) console.log('Connected to MongoDB');
+  else console.error('⚠️ Failed to connect to MongoDB. Running in memory fallback mode.');
+});
 
 // Global error handler to catch unhandled promise rejections in Express 5
 app.use((err, req, res, next) => {
